@@ -40,7 +40,7 @@ int main(int argc, char *argv[]){
     //slideshare.net/rahulhada
     //Deklaracie premennych
     uint32_t numNodes = 25; //10x10
-    double distance = 500;  // m
+    //double distance = 500;  // m
     
     
     //vytvorenie nodov
@@ -51,6 +51,10 @@ int main(int argc, char *argv[]){
     NodeContainer hospodar;
     hospodar.Create(1);
     
+    NodeContainer sietNodov;
+    sietNodov.Add(rastliny);
+    sietNodov.Add(hospodar);
+    
     
     //vytvorenie technologie
     CsmaHelper csma;
@@ -59,7 +63,7 @@ int main(int argc, char *argv[]){
     
     //nainstalovanie technologie na device
     NetDeviceContainer devices;
-    devices = csma.Install(rastliny);
+    devices = csma.Install(sietNodov);
     
     //na komunikaciu bude potrebny ip adress helper
     Ipv4AddressHelper address;
@@ -82,27 +86,35 @@ int main(int argc, char *argv[]){
     mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                  "MinX", DoubleValue (0.0),
                                  "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (distance),
-                                 "DeltaY", DoubleValue (distance),
-                                 "GridWidth", UintegerValue (1),
+                                 "DeltaX", DoubleValue (5.0),
+                                 "DeltaY", DoubleValue (2.0),
+                                 "GridWidth", UintegerValue (5),
                                  "LayoutType", StringValue ("RowFirst"));
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (rastliny);
     
+    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-50, 50, -25, 50)));
+    mobility.Install (hospodar);
+ 
+ 
     
     
     Simulator::Stop (Seconds (33.0));
     
     //zobrazenie simulacie
-    AnimationInterface anim ("animation-harvesting.xml"); // Mandatory
+    AnimationInterface anim ("my-animation-harvesting.xml"); // Mandatory
      for (uint32_t i = 0; i < rastliny.GetN (); ++i)
       {
          anim.UpdateNodeDescription (rastliny.Get (i), "Zelenina"); // Optional
          anim.UpdateNodeColor (rastliny.Get (i), 255, 0, 0); // Optional
        }
+    
+      anim.UpdateNodeDescription (hospodar.Get (0), "Hospodar"); // Optional
+      anim.UpdateNodeColor (hospodar.Get (0), 0, 255, 0); // Optional
+    
      
      
-     //anim.EnablePacketMetadata (); // Optional
+     anim.EnablePacketMetadata (); // Optional
      //anim.EnableIpv4RouteTracking ("routingtable-wireless.xml", Seconds (0), Seconds (5), Seconds (0.25)); //Optional
      //anim.EnableWifiMacCounters (Seconds (0), Seconds (10)); //Optional
      //anim.EnableWifiPhyCounters (Seconds (0), Seconds (10)); //Optional
