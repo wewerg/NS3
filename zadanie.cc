@@ -98,9 +98,9 @@ int main(int argc, char *argv[]){
   
     
     mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
-                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=20.0]"));
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=-20.0|Max=20.0]"));
     //mobility.SetMobilityModel ("ns3::RandomRectanglePositionAllocator");
-    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-50, 100, -50, 100)));
+    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-100, 200, -100, 200)));
     
     mobility.Install (hospodar);
  
@@ -126,6 +126,7 @@ int main(int argc, char *argv[]){
      //anim.EnableIpv4RouteTracking ("routingtable-wireless.xml", Seconds (0), Seconds (5), Seconds (0.25)); //Optional
      //anim.EnableWifiMacCounters (Seconds (0), Seconds (10)); //Optional
      //anim.EnableWifiPhyCounters (Seconds (0), Seconds (10)); //Optional
+     
     
     
     
