@@ -41,6 +41,7 @@ int main(int argc, char *argv[]){
     //Deklaracie premennych
     uint32_t numNodes = 25; //10x10
     //double distance = 500;  // m
+    //double distanceToRx = 100.0; //m
     
     
     //vytvorenie nodov
@@ -84,8 +85,8 @@ int main(int argc, char *argv[]){
     
     MobilityHelper mobility;
     mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
+                                 "MinX", DoubleValue (5.0),
+                                 "MinY", DoubleValue (5.0),
                                  "DeltaX", DoubleValue (5.0),
                                  "DeltaY", DoubleValue (2.0),
                                  "GridWidth", UintegerValue (5),
@@ -93,7 +94,14 @@ int main(int argc, char *argv[]){
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (rastliny);
     
-    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-50, 50, -25, 50)));
+    
+  
+    
+    mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=20.0]"));
+    //mobility.SetMobilityModel ("ns3::RandomRectanglePositionAllocator");
+    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-50, 100, -50, 100)));
+    
     mobility.Install (hospodar);
  
  
