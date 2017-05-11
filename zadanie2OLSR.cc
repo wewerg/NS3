@@ -105,6 +105,7 @@ int main (int argc, char *argv[])
   double distance = 100;  // m
   double Prss = -120; 
   double offset = 81;
+  double harvestingUpdateInterval = 2;  // seconds
   uint32_t packetSize = 1000; // bytes
   uint32_t numPackets = 1;
   uint32_t numNodes = 25;  // by default, 5x5
@@ -179,6 +180,37 @@ int main (int argc, char *argv[])
   wifiMac.SetType ("ns3::AdhocWifiMac");
   NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, senzorSiet);
 
+   /** Energy Model **/
+   /***************************************************************************/
+      /* energy source */
+   BasicEnergySourceHelper basicSourceHelper;
+      // configure energy source
+       cout<<"End of energy source1"<<endl;
+      basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (1.0));
+      // install source
+       cout<<"End of energy source2"<<endl;
+      EnergySourceContainer sources = basicSourceHelper.Install (senzorSiet);
+      /* device energy model */
+       cout<<"End of energy source3"<<endl;
+      WifiRadioEnergyModelHelper radioEnergyHelper;
+      // configure radio energy model
+      radioEnergyHelper.Set ("TxCurrentA", DoubleValue (0.0174));
+      radioEnergyHelper.Set ("RxCurrentA", DoubleValue (0.0197));
+       cout<<"End of energy source4"<<endl;
+      // install device model
+      DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install (devices, sources);
+      cout<<"End of energy source"<<endl;
+      /* energy harvester */
+      BasicEnergyHarvesterHelper basicHarvesterHelper;
+      // configure energy harvester
+      //EnergySourceContainer harveHosp = basicSourceHelper.Install (hosp);
+      basicHarvesterHelper.Set ("PeriodicHarvestedPowerUpdateInterval", TimeValue (Seconds (harvestingUpdateInterval)));
+      basicHarvesterHelper.Set ("HarvestablePower", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=0.1]"));
+      // instalovanie harvester na polnohospodara 
+      EnergyHarvesterContainer harvester = basicHarvesterHelper.Install (sources);
+      /***************************************************************************/
+      cout<<"End of hardvester"<<endl;
+
   MobilityHelper mobility;
   mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                  "MinX", DoubleValue (5.0),
@@ -194,7 +226,7 @@ int main (int argc, char *argv[])
   
     
   mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
-                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=20.0|Max=30.0]"));
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=18.0|Max=23.0]"));
     //mobility.SetMobilityModel ("ns3::RandomRectanglePositionAllocator");
   mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (10, 20, 10, 25)));
     
