@@ -102,7 +102,9 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize,
 int main (int argc, char *argv[])
 {
   std::string phyMode ("DsssRate1Mbps");
-  double distance = 50;  // m
+  double distance = 100;  // m
+  double Prss = -120; 
+  double offset = 81;
   uint32_t packetSize = 1000; // bytes
   uint32_t numPackets = 1;
   uint32_t numNodes = 25;  // by default, 5x5
@@ -157,6 +159,7 @@ int main (int argc, char *argv[])
   YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
   // set it to zero; otherwise, gain will be added
   wifiPhy.Set ("RxGain", DoubleValue (-10) ); 
+  wifiPhy.Set ("TxGain", DoubleValue (offset + Prss));
   // ns-3 supports RadioTap and Prism tracing extensions for 802.11b
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
@@ -177,17 +180,26 @@ int main (int argc, char *argv[])
 
   MobilityHelper mobility;
   mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (distance),
-                                 "DeltaY", DoubleValue (distance),
+                                 "MinX", DoubleValue (5.0),
+                                 "MinY", DoubleValue (5.0),
+                                 "DeltaX", DoubleValue (5.0),
+                                 "DeltaY", DoubleValue (2.0),
                                  "GridWidth", UintegerValue (5),
                                  "LayoutType", StringValue ("RowFirst"));
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (c);
-  mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator","X", StringValue ("ns3::UniformRandomVariable[Min=300.0|Max=500.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=30.0]"));
-  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-100, 200, -100, 200)));
+    
+    
+  
+    
+  mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
+                                 "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=20.0|Max=40.0]"));
+    //mobility.SetMobilityModel ("ns3::RandomRectanglePositionAllocator");
+  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (10, 30, 20, 40)));
+    
   mobility.Install (hosp);
+ 
+ 
 
   // Enable OLSR
   OlsrHelper olsr;
@@ -212,7 +224,7 @@ int main (int argc, char *argv[])
   recvSink->Bind (local);
   recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
 
-  Ptr<Socket> source = Socket::CreateSocket (c.Get (sourceNode), tid);
+  Ptr<Socket> source = Socket::CreateSocket (hosp.Get(sinkNode), tid);
   InetSocketAddress remote = InetSocketAddress (i.GetAddress (sinkNode, 0), 80);
   source->Connect (remote);
 
@@ -227,7 +239,7 @@ int main (int argc, char *argv[])
 
   Simulator::Stop (Seconds (16.0));
   
-  AnimationInterface anim ("wireless-animation-ps2.xml"); // Mandatory
+  AnimationInterface anim ("grid-olsr-animation-ps2.xml"); // Mandatory
   for (uint32_t i = 0; i < c.GetN (); ++i)
     {
          ostringstream stringStream;
