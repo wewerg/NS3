@@ -28,6 +28,9 @@ Vhodne zvolte na rozsah x,y pre vynesenie do grafu. Simuláciu ukoncite tiez vho
 #include "ns3/config-store-module.h"
 #include "ns3/energy-module.h"
 #include "ns3/wifi-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/point-to-point-module.h"
+#include "ns3/csma-module.h"
 
 
 #include <iostream>
@@ -37,13 +40,37 @@ Vhodne zvolte na rozsah x,y pre vynesenie do grafu. Simuláciu ukoncite tiez vho
 using namespace ns3;
 using namespace std;
 
+NS_LOG_COMPONENT_DEFINE ("Zadanie2PS2");
 
+void ReceivePacket (Ptr<Socket> socket)
+{
+  while (socket->Recv ())
+    {
+      NS_LOG_UNCOND ("Received one packet!");
+    }
+}
+
+static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, 
+                             uint32_t pktCount, Time pktInterval )
+{
+  if (pktCount > 0)
+    {
+      socket->Send (Create<Packet> (pktSize));
+      Simulator::Schedule (pktInterval, &GenerateTraffic, 
+                           socket, pktSize,pktCount-1, pktInterval);
+    }
+  else
+    {
+      socket->Close ();
+    }
+}
 
 
 int main(int argc, char *argv[]){
     
     //Deklaracie premennych
     string phyMode ("DsssRate1Mbps");
+    //uint32_t nWifi = 20;
     double Prss = -80;            // dBm
     double offset = 81;
     bool verbose = false;
@@ -52,55 +79,31 @@ int main(int argc, char *argv[]){
     double harvestingUpdateInterval = 1;  // seconds
     //double distance = 500;  // m
     
-     // disable fragmentation for frames below 2200 bytes
-    Config::SetDefault ("ns3::WifiRemoteStationManager::FragmentationThreshold",
-                      StringValue ("2200"));
-     // turn off RTS/CTS for frames below 2200 bytes
-    Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold",
-                      StringValue ("2200"));
-    // Fix non-unicast data rate to be the same as that of unicast
-    Config::SetDefault ("ns3::WifiRemoteStationManager::NonUnicastMode",
-                      StringValue (phyMode));
-
-    
     //vytvorenie nodov
-    NodeContainer senz;
+    NodeContainer senz; // =wifiStaNodes
     senz.Create(numNodes);
     
     //Polnohospodar
-    NodeContainer hosp;
+    NodeContainer hosp;// = wifiApNode
     hosp.Create(1);
     
-    NodeContainer senzorSiet;
+    NodeContainer senzorSiet; //= allNodes;
     senzorSiet.Add(senz);
     senzorSiet.Add(hosp);
-    
-    
-    //Linkova vrstva
-    //CsmaHelper csma;
-    //csma.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
-    //csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
-    
-    //nainstalovanie tlinkovej vrstvy
-    //NetDeviceContainer devices;
-    //devices = csma.Install(senzorSiet);
-    cout<<"End of nodeeee init"<<endl;
+
     WifiHelper wifi;
     if (verbose)
       {
         wifi.EnableLogComponents ();  // Turn on all Wifi logging
       }
-    wifi.SetStandard (WIFI_PHY_STANDARD_80211b);
 
     /** Wifi PHY **/
     /***************************************************************************/
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
     wifiPhy.Set ("RxGain", DoubleValue (-10));
-    wifiPhy.Set ("TxGain", DoubleValue (offset + Prss));
-    wifiPhy.Set ("CcaMode1Threshold", DoubleValue (0.0));
+    //wifiPhy.Set ("TxGain", DoubleValue (offset + Prss));
+    //wifiPhy.Set ("CcaMode1Threshold", DoubleValue (0.0));
 
-  // ns-3 supports RadioTap and Prism tracing extensions for 802.11b
-    wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
@@ -116,32 +119,8 @@ int main(int argc, char *argv[]){
   // Set it to adhoc mode
     wifiMac.SetType ("ns3::AdhocWifiMac");
     NetDeviceContainer devices = wifi.Install (wifiPhy, wifiMac, senzorSiet);
-     /** Internet stack **/
-    InternetStackHelper internet;
-    internet.Install (senzorSiet);
-    //na komunikaciu bude potrebny ip adress helper
-    Ipv4AddressHelper address;
-    address.SetBase("10.1.1.0","255.255.255.0");
-    Ipv4InterfaceContainer interfaces = address.Assign(devices);
-    cout<<"End of IPv4"<<endl;
+     
     
-    /** Mobility **/
-    
-    MobilityHelper mobility;
-    mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (5.0),
-                                 "DeltaY", DoubleValue (2.0),
-                                 "GridWidth", UintegerValue (5),
-                                 "LayoutType", StringValue ("RowFirst"));
-    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility.Install (senz);
-    
-    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-50, 50, -25, 50)));
-    mobility.Install (hosp);
-    
-    cout<<"End of mobility"<<endl;
     /** Energy Model **/
     /***************************************************************************/
     /* energy source */
@@ -151,7 +130,7 @@ int main(int argc, char *argv[]){
     basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (1.0));
     // install source
      cout<<"End of energy source2"<<endl;
-    EnergySourceContainer sources = basicSourceHelper.Install (senz);
+    EnergySourceContainer sources = basicSourceHelper.Install (senzorSiet);
     /* device energy model */
      cout<<"End of energy source3"<<endl;
     WifiRadioEnergyModelHelper radioEnergyHelper;
@@ -172,14 +151,69 @@ int main(int argc, char *argv[]){
     EnergyHarvesterContainer harvester = basicHarvesterHelper.Install (sources);
     /***************************************************************************/
     cout<<"End of hardvester"<<endl;
+
     
-    Simulator::Stop (Seconds (33.0));
+    /** Mobility **/
+    
+    MobilityHelper mobility;
+    mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                 "MinX", DoubleValue (0.0),
+                                 "MinY", DoubleValue (0.0),
+                                 "DeltaX", DoubleValue (10.0),
+                                 "DeltaY", DoubleValue (10.0),
+                                 "GridWidth", UintegerValue (5),
+                                 "LayoutType", StringValue ("RowFirst"));
+    mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+    mobility.Install (senz);
+    
+    mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator","X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=5.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=30.0]"));
+    //mobility.SetMobilityModel ("ns3::RandomRectanglePositionAllocator");
+    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-50, 50, -20, 50)));
+    mobility.Install (hosp);
+//    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-50, 50, -25, 50)));
+//    mobility.Install (hosp);
+    
+    cout<<"End of mobility"<<endl;
+    
+    /** Internet stack **/
+    InternetStackHelper internet;
+    internet.Install (senzorSiet);
+    cout<<"End of IPv4 stack"<<endl;
+    /** Internet addresses **/
+    Ipv4AddressHelper address;
+    address.SetBase("10.1.1.0","255.255.255.0");
+    Ipv4InterfaceContainer interfaces = address.Assign(devices);
+    
+    cout<<"End of IPv4 address"<<endl;   
+    
+    
+    /** Install Application **/
+    UdpEchoServerHelper echoServer (9);
+    ApplicationContainer serverApps = echoServer.Install (hosp);
+    serverApps.Start (Seconds (1.0));
+    serverApps.Stop (Seconds (15.0));
+    cout<<"End of instal App server"<<endl;    
+    UdpEchoClientHelper echoClient (interfaces.GetAddress (1), 9);
+    echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
+    echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.)));
+    echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+    ApplicationContainer clientApps = echoClient.Install (senz);
+    clientApps.Start (Seconds (2.0));
+    clientApps.Stop (Seconds (15.0));
+
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+    
+    cout<<"End of APPlication"<<endl;
+    
+    Simulator::Stop (Seconds (15.0));
     
     //zobrazenie simulacie
     AnimationInterface anim ("My-animation-zadanie2.xml"); // Mandatory
      for (uint32_t i = 0; i < senz.GetN (); ++i)
       {
-         anim.UpdateNodeDescription (senz.Get (i), "Senz"); // Optional
+         ostringstream stringStream;
+         stringStream << "Senz" << i;
+         anim.UpdateNodeDescription (senz.Get (i), stringStream.str()); // Optional
          anim.UpdateNodeColor (senz.Get (i), 255, 0, 0); // Optional
        }
     anim.UpdateNodeDescription (hosp.Get (0), "Hosp"); // Optional
