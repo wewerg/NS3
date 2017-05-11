@@ -113,7 +113,8 @@ int main (int argc, char *argv[])
   double interval = 1.0; // seconds
   bool verbose = false;
   bool tracing = false;
-
+  SeedManager::SetSeed (10); // nastavit raz, neodporuca sa menit
+  SeedManager::SetRun (1);   // pre zarucenie nezavislosti je lepsi
   CommandLine cmd;
 
   cmd.AddValue ("phyMode", "Wifi Phy mode", phyMode);
@@ -195,7 +196,7 @@ int main (int argc, char *argv[])
   mobility.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
                                  "X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"),"Y", StringValue ("ns3::UniformRandomVariable[Min=20.0|Max=40.0]"));
     //mobility.SetMobilityModel ("ns3::RandomRectanglePositionAllocator");
-  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (10, 30, 20, 40)));
+  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel","Bounds", RectangleValue (Rectangle (-10, 10, -20, 20)));
     
   mobility.Install (hosp);
  
@@ -219,13 +220,13 @@ int main (int argc, char *argv[])
   Ipv4InterfaceContainer i = ipv4.Assign (devices);
 
   TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-  Ptr<Socket> recvSink = Socket::CreateSocket (c.Get (sinkNode), tid);
+  Ptr<Socket> recvSink = Socket::CreateSocket (hosp.Get (sinkNode), tid);
   InetSocketAddress local = InetSocketAddress (Ipv4Address::GetAny (), 80);
   recvSink->Bind (local);
   recvSink->SetRecvCallback (MakeCallback (&ReceivePacket));
 
-  Ptr<Socket> source = Socket::CreateSocket (hosp.Get(sinkNode), tid);
-  InetSocketAddress remote = InetSocketAddress (i.GetAddress (sinkNode, 0), 80);
+  Ptr<Socket> source = Socket::CreateSocket (c.Get(20), tid);
+  InetSocketAddress remote = InetSocketAddress (i.GetAddress (25, 0), 80);
   source->Connect (remote);
 
 
